@@ -47,7 +47,7 @@ def get_fullness_via_twitter(user, name):
     if rg.match(text):
         return 100
     # Is it empty?
-    rg = rg.compile(dehumidifiers[name]['empty'])
+    rg = re.compile(dehumidifiers[name]['empty'])
     if rg.match(text):
         return 0
     # Is it... indeterminent?
