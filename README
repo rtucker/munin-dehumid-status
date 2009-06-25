@@ -1,0 +1,5 @@
+This is a Munin plugin to monitor Twittering dehumidifiers.
+
+For more information on how and why one would monitor a dehumidifier:
+    http://github.com/mwalling/arduino-twitdehumid/tree
+
