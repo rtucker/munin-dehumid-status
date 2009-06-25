@@ -29,23 +29,19 @@ dehumidifiers = {'mwwdehumid':
 
 myname = os.path.split(sys.argv[0])[-1].split('_')[1]
 
-def print_config(name):
+def print_config(user, name):
 	# outputs the configuration for a given instance
-	print """graph_title Status for dehumidifier %s
+	print """graph_title Status for %s
 graph_args --base 1000 --lower-limit 0
 graph_vlabel Fullness (percent)
 graph_category Climate
 graph_info Fullness of the dehumidifier
 %s.label Percent full
-%s.draw AREA""" % (name, name, name)
+%s.draw AREA""" % (user.name, name, name)
 
-def get_fullness_via_twitter(name):
+def get_fullness_via_twitter(user, name):
     # returns the percent full from twitter
-    api = twitter.Api()
-    statuses = api.GetUserTimeline(name)
-    statuses.sort()
-    # Most recent status will be first; grab the text.
-    text = statuses[0].text
+    text = user.status.text
     # Is it full?
     rg = re.compile(dehumidifiers[name]['full'])
     if rg.match(text):
@@ -58,10 +54,12 @@ def get_fullness_via_twitter(name):
     return 50
 
 def main():
+    api = twitter.Api()
+    user = api.GetUser(myname)
     if len(sys.argv) > 1 and sys.argv[1] == 'config':
-        print_config(myname)
+        print_config(user, myname)
     else:
-        fullness = get_fullness_via_twitter(myname)
+        fullness = get_fullness_via_twitter(user, myname)
         print '%s.value %i' % (myname, fullness)
 
 if __name__ == '__main__':
