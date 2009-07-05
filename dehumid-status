@@ -29,6 +29,22 @@ dehumidifiers = {'mwwdehumid':
 
 myname = os.path.split(sys.argv[0])[-1].split('_')[1]
 
+class _FixedFileCache(twitter._FileCache):
+    # Patch twitter._FileCache._GetUsername to include a try/except, to
+    # rectify http://github.com/rtucker/munin-dehumid-status/issues#issue/1
+    def _GetUsername(self):
+        '''Attempt to find the username in a cross-platform fashion.'''
+        try:
+            return os.getenv('USER') or \
+            os.getenv('LOGNAME') or \
+            os.getenv('USERNAME') or \
+            os.getlogin() or \
+            'nobody'
+        except:
+            return 'nobody'
+
+twitter._FileCache = _FixedFileCache
+
 def print_config(user, name):
 	# outputs the configuration for a given instance
 	print """graph_title Status for %s
