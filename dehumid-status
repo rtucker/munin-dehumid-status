@@ -36,11 +36,11 @@ class _FixedFileCache(twitter._FileCache):
         '''Attempt to find the username in a cross-platform fashion.'''
         try:
             return os.getenv('USER') or \
-            os.getenv('LOGNAME') or \
-            os.getenv('USERNAME') or \
-            os.getlogin() or \
-            'nobody'
-        except:
+                   os.getenv('LOGNAME') or \
+                   os.getenv('USERNAME') or \
+                   os.getlogin() or \
+                   'nobody'
+        except (IOError, OSError), e:
             return 'nobody'
 
 twitter._FileCache = _FixedFileCache
