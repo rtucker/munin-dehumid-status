@@ -90,11 +90,13 @@ def get_fullness_via_capacitance(name):
     ser.flush()
     results = []
     for test in range(0,11):
-        (time, timeunit, cap, capunit) = ser.readline().split()
-        if capunit == 'microFarads':
-            results.append(int(cap) * 1e-6)
-        elif capunit == 'nanoFarads':
-            results.append(int(cap) * 1e-9)
+        # throw out the first test
+        if test > 0:
+            (time, timeunit, cap, capunit) = ser.readline().split()
+            if capunit == 'microFarads':
+                results.append(int(cap) * 1e-6)
+            elif capunit == 'nanoFarads':
+                results.append(int(cap) * 1e-9)
     capacitance = sorted(results)[int(len(results)/2)]
 
     if capacitance < dehumidifiers[name]['emptycapacitance']:
