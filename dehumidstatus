@@ -1,0 +1,144 @@
+#!/usr/bin/python -W ignore
+# -*- coding: utf-8 -*-
+"""
+A munin plugin for visualizing the status of Twitter-enabled dehumidifiers.
+
+Name as follows:
+/etc/munin/plugins/dehumid_<dehumidifiername>
+where <dehumidifiername> is the name of the dehumidifier.
+
+Currently supports:
+    mwwdehumid http://github.com/mwalling/arduino-twitdehumid/tree
+    hoopydehumid Arduino-based water level probe
+
+Returns 0 for an empty dehumidifier, 100 for a full dehumidifier, or a
+percentage in between where available.
+
+Ryan Tucker <rtucker@gmail.com>
+"""
+
+import os
+import re
+import serial
+import sys
+import time
+import twitter
+
+# Full and empty regexps for various dehumidifiers
+__dehumidifiers__ = {
+    'mwwdehumid':
+        {'type': 'twitter',
+         'full': 'My tank is full.*',
+         'empty': 'Thanks for emptying me.*'},
+    'hoopydehumid':
+        {'type': 'capacitance',
+         'description': 'HoopyCasa Basement Dehumidifier',
+         'serial': '/dev/ttyUSB0',
+         'fullcapacitance': 50e-9,
+         'emptycapacitance': 5e-9}
+    }
+
+class _FixedFileCache(twitter._FileCache):
+    """Patches twitter._FileCache._GetUsername to include a try/except, to
+       rectify http://github.com/rtucker/munin-dehumid-status/issues#issue/1"""
+    def _GetUsername(self):
+        """Attempt to find the username in a cross-platform fashion (modified
+           by dehumidstatus)"""
+        try:
+            return os.getenv('USER') or \
+                   os.getenv('LOGNAME') or \
+                   os.getenv('USERNAME') or \
+                   os.getlogin() or \
+                   'nobody'
+        except (IOError, OSError):
+            return 'nobody'
+
+twitter._FileCache = _FixedFileCache
+
+def print_config(name):
+    """outputs the configuration for a given dehumidifier"""
+    if __dehumidifiers__[name]['type'] == 'twitter':
+        api = twitter.Api()
+        user = api.GetUser(name)
+        desc = user.name + ' (via Twitter)'
+    elif __dehumidifiers__[name]['type'] == 'capacitance':
+        desc = __dehumidifiers__[name]['description'] + ' (via Arduino)'
+    print """graph_title Status for %s
+graph_args --base 1000 --lower-limit 0
+graph_vlabel Fullness (percent)
+graph_category Climate
+graph_info Fullness of the dehumidifier
+%s.label Percent full
+%s.draw AREA""" % (desc, name, name)
+
+def get_fullness_via_twitter(name):
+    """queries twitter to receive a dehumidifier's fullness"""
+    api = twitter.Api()
+    user = api.GetUser(name)
+    # returns the percent full from twitter
+    text = user.status.text
+    # Is it full?
+    _rg = re.compile(__dehumidifiers__[name]['full'])
+    if _rg.match(text):
+        return 100
+    # Is it empty?
+    _rg = re.compile(__dehumidifiers__[name]['empty'])
+    if _rg.match(text):
+        return 0
+    # Is it... neither?
+    return 50
+
+def get_fullness_via_capacitance(name):
+    """determines the fullness of a dehumidifier by getting the capacitance
+       via serial, then judging how full it really is"""
+    loopstart = time.time()
+    ser = serial.Serial(__dehumidifiers__[name]['serial'], 9600)
+    ser.flush()
+    results = []
+    for test in range(0, 11):
+        _ok = False
+        while not _ok:
+            if time.time() > loopstart+10:
+                _ok = True
+                break
+            stuff = ser.readline().split()
+            if len(stuff) == 4:
+                (elapsedtime, elapsedtimeunit, cap, capunit) = stuff
+                if capunit == 'microFarads':
+                    results.append(int(cap) * 1e-6)
+                    _ok = True
+                elif capunit == 'nanoFarads':
+                    results.append(int(cap) * 1e-9)
+                    _ok = True
+    ser.close()
+    if len(results) > 5:
+        capacitance = sorted(results)[int(len(results)/2)]
+    else:
+        return None
+
+    if capacitance < __dehumidifiers__[name]['emptycapacitance']:
+        return 0
+    elif capacitance > __dehumidifiers__[name]['fullcapacitance']:
+        return 100
+    else:
+        capmax = (__dehumidifiers__[name]['fullcapacitance'] -
+                  __dehumidifiers__[name]['emptycapacitance'])
+        capcur = capacitance - __dehumidifiers__[name]['emptycapacitance']
+        cappct = (capcur / capmax) * 100
+        return int(cappct)
+
+def main():
+    """main function to handle munin fun"""
+    myname = os.path.split(sys.argv[0])[-1].split('_')[1]
+    if len(sys.argv) > 1 and sys.argv[1] == 'config':
+        print_config(myname)
+    else:
+        if __dehumidifiers__[myname]['type'] == 'twitter':
+            fullness = get_fullness_via_twitter(myname)
+        elif __dehumidifiers__[myname]['type'] == 'capacitance':
+            fullness = get_fullness_via_capacitance(myname)
+        print '%s.value %i' % (myname, fullness)
+
+if __name__ == '__main__':
+    main()
+
