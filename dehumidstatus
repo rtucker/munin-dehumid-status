@@ -32,7 +32,7 @@ __dehumidifiers__ = {
          'empty': 'Thanks for emptying me.*'},
     'hoopydehumid':
         {'type': 'capacitance',
-         'description': 'HoopyCasa Basement Dehumidifier',
+         'description': 'Basement Dehumidifier',
          'serial': '/dev/ttyUSB0',
          'fullcapacitance': 50e-9,
          'emptycapacitance': 5e-9}
