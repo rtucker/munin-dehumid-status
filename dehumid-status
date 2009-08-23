@@ -18,13 +18,21 @@
 
 import os
 import re
+import serial
 import sys
 import twitter
 
 # Full and empty regexps for various dehumidifiers
 dehumidifiers = {'mwwdehumid':
-                    {'full': 'My tank is full.*',
-                     'empty': 'Thanks for emptying me.*'}
+                    {'type': 'twitter',
+                     'full': 'My tank is full.*',
+                     'empty': 'Thanks for emptying me.*'},
+                 'hoopydehumid':
+                    {'type': 'capacitance',
+                     'description': 'HoopyCasa Basement Dehumidifier',
+                     'serial': serial.Serial('/dev/ttyUSB0', 9600),
+                     'fullcapacitance': 50e-9,
+                     'emptycapacitance': 5e-9}
                 }
 
 myname = os.path.split(sys.argv[0])[-1].split('_')[1]
@@ -45,17 +53,25 @@ class _FixedFileCache(twitter._FileCache):
 
 twitter._FileCache = _FixedFileCache
 
-def print_config(user, name):
+def print_config(name):
 	# outputs the configuration for a given instance
+    if dehumidifiers[name]['type'] == 'twitter':
+        api = twitter.Api()
+        user = api.GetUser(name)
+        id = user.name + ' (via Twitter)'
+    elif dehumidifiers[name]['type'] == 'capacitance':
+        id = dehumidifiers[name]['description'] + ' (via Arduino)'
 	print """graph_title Status for %s
 graph_args --base 1000 --lower-limit 0
 graph_vlabel Fullness (percent)
 graph_category Climate
 graph_info Fullness of the dehumidifier
 %s.label Percent full
-%s.draw AREA""" % (user.name, name, name)
+%s.draw AREA""" % (id, name, name)
 
-def get_fullness_via_twitter(user, name):
+def get_fullness_via_twitter(name):
+    api = twitter.Api()
+    user = api.GetUser(name)
     # returns the percent full from twitter
     text = user.status.text
     # Is it full?
@@ -69,13 +85,36 @@ def get_fullness_via_twitter(user, name):
     # Is it... indeterminent?
     return 50
 
-def main():
-    api = twitter.Api()
-    user = api.GetUser(myname)
-    if len(sys.argv) > 1 and sys.argv[1] == 'config':
-        print_config(user, myname)
+def get_fullness_via_capacitance(name):
+    ser = dehumidifiers[name]['serial']
+    ser.flush()
+    results = []
+    for test in range(0,11):
+        (time, timeunit, cap, capunit) = ser.readline().split()
+        if capunit == 'microFarads':
+            results.append(int(cap) * 1e-6)
+        elif capunit == 'nanoFarads':
+            results.append(int(cap) * 1e-9)
+    capacitance = sorted(results)[int(len(results)/2)]
+
+    if capacitance < dehumidifiers[name]['emptycapacitance']:
+        return 0
+    elif capacitance > dehumidifiers[name]['fullcapacitance']:
+        return 100
     else:
-        fullness = get_fullness_via_twitter(user, myname)
+        capmax = dehumidifiers[name]['fullcapacitance'] - dehumidifiers[name]['emptycapacitance']
+        capcur = capacitance - dehumidifiers[name]['emptycapacitance']
+        cappct = (capcur / capmax) * 100
+        return int(cappct)
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == 'config':
+        print_config(myname)
+    else:
+        if dehumidifiers[myname]['type'] == 'twitter':
+            fullness = get_fullness_via_twitter(myname)
+        elif dehumidifiers[myname]['type'] == 'capacitance':
+            fullness = get_fullness_via_capacitance(myname)
         print '%s.value %i' % (myname, fullness)
 
 if __name__ == '__main__':
