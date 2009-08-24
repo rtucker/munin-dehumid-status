@@ -68,8 +68,12 @@ graph_args --base 1000 --lower-limit 0
 graph_vlabel Fullness (percent)
 graph_category Climate
 graph_info Fullness of the dehumidifier
+%s.warning 90
+%s.critical 100
+%s.min 0
+%s.max 100
 %s.label Percent full
-%s.draw AREA""" % (desc, name, name)
+%s.draw AREA""" % (desc, name, name, name, name, name, name)
 
 def get_fullness_via_twitter(name):
     """queries twitter to receive a dehumidifier's fullness"""
