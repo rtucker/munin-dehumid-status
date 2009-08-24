@@ -34,8 +34,8 @@ __dehumidifiers__ = {
         {'type': 'capacitance',
          'description': 'Basement Dehumidifier',
          'serial': '/dev/ttyUSB0',
-         'fullcapacitance': 50e-9,
-         'emptycapacitance': 5e-9}
+         'numcaps': 10,
+         'capvalue': 0.1e-6}
     }
 
 class _FixedFileCache(twitter._FileCache):
@@ -120,16 +120,26 @@ def get_fullness_via_capacitance(name):
     else:
         return None
 
-    if capacitance < __dehumidifiers__[name]['emptycapacitance']:
+    sys.stderr.write('Raw capacitance: %.2e\n' % capacitance)
+
+    table = {}
+    parallel = lambda x,y: (x*y)/(x+y)
+    numcaps = __dehumidifiers__[name]['numcaps']
+    capvalue = __dehumidifiers__[name]['capvalue']
+    for i in range(1,numcaps):
+        # we assume the topmost cap is out of the water
+        if i == 1:
+            capacitance = parallel(capvalue,capvalue)
+        else:
+            capacitance = parallel(capvalue,capacitance)
+        table[capacitance] = numcaps - i
+
+    if capacitance < min(table.keys()):
         return 0
-    elif capacitance > __dehumidifiers__[name]['fullcapacitance']:
+    elif capacitance > max(table.keys()):
         return 100
     else:
-        capmax = (__dehumidifiers__[name]['fullcapacitance'] -
-                  __dehumidifiers__[name]['emptycapacitance'])
-        capcur = capacitance - __dehumidifiers__[name]['emptycapacitance']
-        cappct = (capcur / capmax) * 100
-        return int(cappct)
+        return table[sorted(table, key=lambda x: abs(x-capacitance))[0]]*10
 
 def main():
     """main function to handle munin fun"""
