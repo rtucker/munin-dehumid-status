@@ -100,6 +100,8 @@ def get_fullness_via_twitter(name):
 def get_fullness_via_capacitance(name):
     """determines the fullness of a dehumidifier by getting the capacitance
        via serial, then judging how full it really is"""
+
+    # Query the Arduino for capacitance (time out after 10 seconds)
     loopstart = time.time()
     ser = serial.Serial(__dehumidifiers__[name]['serial'], 9600)
     ser.flush()
@@ -110,49 +112,48 @@ def get_fullness_via_capacitance(name):
             if time.time() > loopstart+10:
                 _ok = True
                 break
-            stuff = ser.readline().split()
-            if len(stuff) == 4:
-                (elapsedtime, elapsedtimeunit, cap, capunit) = stuff
-                if capunit == 'microFarads':
-                    results.append(int(cap) * 1e-6)
+            row = ser.readline().split()
+            # Make sure we have 4 elements (didn't open at bad time)...
+            if len(row) == 4:
+                # row = [milliseconds, 'mS', capacitance, 'mumbleFarads']
+                if row[3] == 'microFarads':
+                    results.append(int(row[2]) * 1e-6)
                     _ok = True
-                elif capunit == 'nanoFarads':
-                    results.append(int(cap) * 1e-9)
+                elif row[3] == 'nanoFarads':
+                    results.append(int(row[2]) * 1e-9)
                     _ok = True
     ser.close()
-    if len(results) > 5:
+
+    if len(results) >= 5:
+        # Pick the median
         capacitance = sorted(results)[int(len(results)/2)]
     else:
+        # We did not get 5 values out; abort since our data is likely bad
         return None
 
     sys.stderr.write('Raw capacitance: %.2e\n' % capacitance)
 
-    table = {}
-    parallel = lambda x,y: (x*y)/(x+y)
+    # Math thanks to Dawn Lepard <dawn@lepard.ca>:
+    # Ctotal = 1/(n*(1/C)), solving for n gives us n = C/Ctotal
+    # we ghetto-floor it, add 1 for the cap that will never be immersed,
+    # sub it from numcaps to get the quantity of capacitors immersed,
+    # and multiply it to turn it into a percentage!
     numcaps = __dehumidifiers__[name]['numcaps']
     capvalue = __dehumidifiers__[name]['capvalue']
-    for i in range(1,numcaps):
-        # we assume the topmost cap is out of the water
-        if i == 1:
-            __capacitance__ = parallel(capvalue,capvalue)
-        else:
-            __capacitance__ = parallel(capvalue,__capacitance__)
-        table[__capacitance__] = numcaps - i
+    immersed = (numcaps - int((capvalue/capacitance) + 0.5) + 1)
+    waterlevel = (immersed/float(numcaps-1))*100
 
-    # simplified math thanks to dawn lepard <dawn@lepard.ca>
-    # FIX: *10 assumes 10 steps
-    ncaps_new = (numcaps - int((capvalue/capacitance) + 0.5) + 1)*10
-    sys.stderr.write(' New method: %i%%\n' % ncaps_new)
-
-    if capacitance < min(table.keys()):
+    if capacitance < (1/((numcaps-1)*(1/capvalue))):
+        # Capacitance is less than that we'd see with numcaps-1 caps in series
+        sys.stderr.write(' Empty!\n')
         return 0
-    elif capacitance > max(table.keys()):
+    elif capacitance > (1/(2*(1/capvalue))):
+        # Capacitance is greater than we'd see with 2 caps in series
+        sys.stderr.write(' Full!\n')
         return 100
     else:
-        # FIX: *10 assumes 10 steps
-        ncaps = table[sorted(table, key=lambda x: abs(x-capacitance))[0]]*10
-        sys.stderr.write(' Old method: %i%%\n' % ncaps)
-        return ncaps
+        sys.stderr.write(' %i capacitors immersed\n' % immersed)
+        return waterlevel
 
 def main():
     """main function to handle munin fun"""
