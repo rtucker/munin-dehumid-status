@@ -129,17 +129,25 @@ def get_fullness_via_capacitance(name):
     for i in range(1,numcaps):
         # we assume the topmost cap is out of the water
         if i == 1:
-            capacitance = parallel(capvalue,capvalue)
+            __capacitance__ = parallel(capvalue,capvalue)
         else:
-            capacitance = parallel(capvalue,capacitance)
-        table[capacitance] = numcaps - i
+            __capacitance__ = parallel(capvalue,__capacitance__)
+        table[__capacitance__] = numcaps - i
+
+    # simplified math thanks to dawn lepard <dawn@lepard.ca>
+    # FIX: *10 assumes 10 steps
+    ncaps_new = (numcaps - int((capvalue/capacitance) + 0.5) + 1)*10
+    sys.stderr.write(' New method: %i%%\n' % ncaps_new)
 
     if capacitance < min(table.keys()):
         return 0
     elif capacitance > max(table.keys()):
         return 100
     else:
-        return table[sorted(table, key=lambda x: abs(x-capacitance))[0]]*10
+        # FIX: *10 assumes 10 steps
+        ncaps = table[sorted(table, key=lambda x: abs(x-capacitance))[0]]*10
+        sys.stderr.write(' Old method: %i%%\n' % ncaps)
+        return ncaps
 
 def main():
     """main function to handle munin fun"""
