@@ -143,16 +143,16 @@ def get_fullness_via_capacitance(name):
 
     # Math thanks to Dawn Lepard <dawn@lepard.ca>:
     # Ctotal = 1/(n*(1/C)), solving for n gives us n = C/Ctotal
-    # we ghetto-floor it, add 1 for the cap that will never be immersed,
+    # we ghetto-floor it, /* add 1 for the cap that will never be immersed, */
     # sub it from numcaps to get the quantity of capacitors immersed,
     # and multiply it to turn it into a percentage!
     numcaps = __dehumidifiers__[name]['numcaps']
     capvalue = __dehumidifiers__[name]['capvalue']
-    immersed = (numcaps - int((capvalue/capacitance) + 0.5) + 1)
+    immersed = numcaps - int((capvalue/capacitance) + 0.5)
     waterlevel = (immersed/float(numcaps-1))*100
 
-    if capacitance < (1/((numcaps-1)*(1/capvalue))):
-        # Capacitance is less than that we'd see with numcaps-1 caps in series
+    if immersed <= 0:
+        # very little capacitance -- bottom of probe isn't even wet
         sys.stderr.write('empty!\n')
         return 0
     elif capacitance > (1/(2*(1/capvalue))):
