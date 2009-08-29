@@ -1,5 +1,9 @@
-This is a Munin plugin to monitor Twittering dehumidifiers.
+This is a Munin plugin to monitor dehumidifiers.
 
 For more information on how and why one would monitor a dehumidifier:
     http://github.com/mwalling/arduino-twitdehumid/tree
+    http://blog.hoopycat.com/2009/08/dehumidifier-sensor
+
+Also includes getdehumidpercent.py, which parses an rrd file and returns
+some basic stats on the dehumidifier in a CGI-callable way.
 
