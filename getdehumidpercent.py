@@ -123,8 +123,8 @@ def printjs(statsdict):
     document.write("<p style='text-align:justify;'>The dehumidifier was last ");
     document.write("emptied on %(emptied)s, ");
     document.write("and was last reported full on %(filled)s. ");
-    document.write("The last cycle took %(duration)s, starting at ");
-    document.write("%(prevempty)s). ");
+    document.write("The last cycle took %(duration)s, starting ");
+    document.write("%(prevempty)s. ");
     document.write("<i>%(fortune)s</i></p>");
     jQuery("#progressbar").reportprogress(%(percent)i);
     \n""" % statsdict)
