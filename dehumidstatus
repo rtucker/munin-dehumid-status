@@ -82,6 +82,8 @@ graph_info Fullness of the dehumidifier
 %s.draw AREA""" % (desc, name, name, name, name)
     if __dehumidifiers__[name]['warn']:
         print """%s.warning 90\n%s.critical 100""" % (name, name)
+    if __dehumidifiers__[name]['type'] == 'capacitance':
+        print """raw.min 0\nraw.max 100\nraw.label Percent full (raw)"""
 
 def get_fullness_via_twitter(name):
     """queries twitter to receive a dehumidifier's fullness"""
@@ -150,6 +152,11 @@ def get_fullness_via_capacitance(name):
     capvalue = __dehumidifiers__[name]['capvalue']
     immersed = numcaps - int((capvalue/capacitance) + 0.5)
     waterlevel = (immersed/float(numcaps-1))*100
+
+    # Some test code to overlay a non-floored plot...
+    rawimmersed = numcaps - (capvalue/capacitance)
+    rawwaterlevel = (rawimmersed/float(numcaps-1))*100
+    sys.stdout.write("raw.value %i\n" % rawwaterlevel)
 
     if immersed <= 0:
         # very little capacitance -- bottom of probe isn't even wet
