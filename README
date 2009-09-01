@@ -7,3 +7,6 @@ For more information on how and why one would monitor a dehumidifier:
 Also includes getdehumidpercent.py, which parses an rrd file and returns
 some basic stats on the dehumidifier in a CGI-callable way.
 
+capacitance_tester.pde is based on an example sketch by Paul Badger,
+from http://arduino.cc/en/Tutorial/CapacitanceMeter
+
