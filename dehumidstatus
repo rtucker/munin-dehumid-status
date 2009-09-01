@@ -81,7 +81,7 @@ graph_info Fullness of the dehumidifier
 %s.label Percent full
 %s.draw AREA""" % (desc, name, name, name, name)
     if __dehumidifiers__[name]['warn']:
-        print """%s.warning 80\n%s.critical 100""" % (name, name)
+        print """%s.warning 90\n%s.critical 100""" % (name, name)
 
 def get_fullness_via_twitter(name):
     """queries twitter to receive a dehumidifier's fullness"""
