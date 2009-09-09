@@ -40,10 +40,12 @@ __dehumidifiers__ = {
     'hoopydehumid':
         {'type': 'capacitance',
          'description': 'Basement Dehumidifier',
+         'level': 'Tank is (\d+)',
          'serial': '/dev/ttyUSB0',
          'numcaps': 10,
          'capvalue': 0.1e-6,
-         'warn': True}
+         'warn': True,
+         'updatetwitter': 'Tank is %i%% full'}
     }
 
 class _FixedFileCache(twitter._FileCache):
@@ -90,17 +92,26 @@ def get_fullness_via_twitter(name):
     api = twitter.Api()
     user = api.GetUser(name)
     # returns the percent full from twitter
-    text = user.status.text
-    # Is it full?
-    _rg = re.compile(__dehumidifiers__[name]['full'])
-    if _rg.match(text):
-        return 100
-    # Is it empty?
-    _rg = re.compile(__dehumidifiers__[name]['empty'])
-    if _rg.match(text):
-        return 0
-    # Is it... neither?
-    return 50
+    if user.status:
+        text = user.status.text
+    else:
+        return None
+    if (__dehumidifiers__[name].has_key('full') and
+        __dehumidifiers__[name].has_key('empty')):
+        # Is it full?
+        _rg = re.compile(__dehumidifiers__[name]['full'])
+        if _rg.match(text):
+            return 100
+        # Is it empty?
+        _rg = re.compile(__dehumidifiers__[name]['empty'])
+        if _rg.match(text):
+            return 0
+    if __dehumidifiers__[name].has_key('level'):
+        # grab the level using the regexp
+        _rg = re.compile(__dehumidifiers__[name]['level'])
+        if _rg.match(text):
+            return _rg.match(text).group(1)
+    return None
 
 def get_fullness_via_capacitance(name):
     """determines the fullness of a dehumidifier by getting the capacitance
@@ -170,6 +181,33 @@ def get_fullness_via_capacitance(name):
         sys.stderr.write('%i capacitors immersed\n' % immersed)
         return waterlevel
 
+def update_twitter(twittername, twitterpass, fullness):
+    """Transmits the current level of fullness to Twitter, if Twitter
+       doesn't already have it."""
+
+    sendtweet = False
+    # Get the current fullness level, as far as Twitter knows it
+    curfullstr = get_fullness_via_twitter(twittername)
+
+    if curfullstr:
+        curfull = int(curfullstr)
+        sys.stderr.write('Curfull: %i  Fullness: %i\n' % (curfull, fullness))
+        if fullness != curfull:
+            if fullness == 100:
+                sendtweet = True
+            if fullness == 0:
+                sendtweet = True
+            if curfull < 50 and fullness > 50:
+                sendtweet = True
+
+    if sendtweet:
+        api = twitter.Api(username=twittername, password=twitterpass)
+        status = api.PostUpdate(__dehumidifiers__[twittername]['updatetwitter'] % fullness)
+        if status:
+            sys.stderr.write('Sent to Twitter: %s\n' % status.text)
+            return True
+    return False
+
 def main():
     """main function to handle munin fun"""
     myname = os.path.split(sys.argv[0])[-1].split('_')[1]
@@ -183,7 +221,14 @@ def main():
                 raise ImportError('Twitter module not found for %s' % myname)
         elif __dehumidifiers__[myname]['type'] == 'capacitance':
             fullness = get_fullness_via_capacitance(myname)
-        print '%s.value %i' % (myname, fullness)
+        if fullness:
+            print '%s.value %i' % (myname, fullness)
+            if 'updatetwitter' in __dehumidifiers__[myname].keys():
+                if (__dehumidifiers__[myname]['updatetwitter'] and
+                        myname in os.environ.keys()):
+                    update_twitter(twittername=myname,
+                                   twitterpass=os.environ[myname],
+                                   fullness=fullness)
 
 if __name__ == '__main__':
     main()
