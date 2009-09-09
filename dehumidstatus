@@ -197,7 +197,8 @@ def update_twitter(twittername, twitterpass, fullness):
                 sendtweet = True
             if fullness == 0:
                 sendtweet = True
-            if curfull < 50 and fullness > 50:
+            if ((abs(curfull - fullness) > 30) and fullness > 15
+              and fullness < 80):
                 sendtweet = True
 
     if sendtweet:
