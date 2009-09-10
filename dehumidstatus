@@ -222,7 +222,7 @@ def main():
                 raise ImportError('Twitter module not found for %s' % myname)
         elif __dehumidifiers__[myname]['type'] == 'capacitance':
             fullness = get_fullness_via_capacitance(myname)
-        if type(fullness) == int:
+        if type(fullness) is not None:
             print '%s.value %i' % (myname, fullness)
             if 'updatetwitter' in __dehumidifiers__[myname].keys():
                 if (__dehumidifiers__[myname]['updatetwitter'] and
