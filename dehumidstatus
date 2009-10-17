@@ -44,6 +44,7 @@ __dehumidifiers__ = {
          'serial': '/dev/ttyUSB0',
          'numcaps': 10,
          'capvalue': 0.1e-6,
+         'showraw': False,
          'warn': True,
          'updatetwitter': 'Tank is %i%% full'}
     }
@@ -84,7 +85,8 @@ graph_info Fullness of the dehumidifier
 %s.draw AREA""" % (desc, name, name, name, name)
     if __dehumidifiers__[name]['warn']:
         print """%s.warning 90\n%s.critical 100""" % (name, name)
-    if __dehumidifiers__[name]['type'] == 'capacitance':
+    if (__dehumidifiers__[name]['type'] == 'capacitance' and
+        __dehumidifiers__[name]['showraw'] == True):
         print """raw.min 0\nraw.max 100\nraw.label Percent full (raw)"""
 
 def get_fullness_via_twitter(name):
