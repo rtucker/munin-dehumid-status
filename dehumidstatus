@@ -18,6 +18,7 @@ Ryan Tucker <rtucker@gmail.com>
 """
 
 import os
+import random
 import re
 import serial
 import sys
@@ -204,10 +205,11 @@ def update_twitter(twittername, twitterpass, fullness):
                 sendtweet = True
 
     if sendtweet:
+        outgoing = __dehumidifiers__[twittername]['updatetwitter'] % fullness
         api = twitter.Api(username=twittername, password=twitterpass)
-        status = api.PostUpdate(__dehumidifiers__[twittername]['updatetwitter'] % fullness)
+        status = api.PostUpdate(outgoing + ' ' + ''.join(random.sample('MOIST',5)))
         if status:
-            sys.stderr.write('Sent to Twitter: %s\n' % status.text)
+            sys.stderr.write('Twitter: TX %s, RX %s\n' % outgoing, status.text)
             return True
     return False
 
