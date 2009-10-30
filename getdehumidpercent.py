@@ -9,8 +9,8 @@ rrdfile = '/var/lib/munin/hoopycat.com/arrogant-bastard-dehumid_hoopydehumid-hoo
 
 def getstats():
     fd0 = os.popen('rrdtool fetch %s MAX -s -30days -e -9days' % rrdfile)
-    fd1 = os.popen('rrdtool fetch %s MAX -s -9days -e -1days' % rrdfile)
-    fd2 = os.popen('rrdtool fetch %s MAX -s -1days' % rrdfile)
+    fd1 = os.popen('rrdtool fetch %s MAX -s -9days -e -2days' % rrdfile)
+    fd2 = os.popen('rrdtool fetch %s MAX -s -2days' % rrdfile)
 
     content = fd0.readlines() + fd1.readlines() + fd2.readlines()
 
