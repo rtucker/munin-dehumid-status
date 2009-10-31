@@ -76,7 +76,7 @@ def getstats():
         outdict['prevempty'] = '<i>unknown</i>'
 
     if (prevempty > 0) and (lastfull > 0):
-        duration = lastfull - prevempty
+        duration = float(lastfull - prevempty)
         outdict['duration_sec'] = duration
         if duration > 1.5*7*24*60*60:
             outdict['duration'] = '%.1f weeks' % (duration/(7*24*60*60))
