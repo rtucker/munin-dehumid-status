@@ -91,17 +91,17 @@ def getstats():
     if lastempty > 0:
         outdict['emptied'] = relativedate(lastempty)
     else:
-        outdict['emptied'] = '<i>unknown</i>'
+        outdict['emptied'] = '<i>at some point</i>'
 
     if lastfull > 0:
         outdict['filled'] = relativedate(lastfull)
     else:
-        outdict['filled'] = '<i>unknown</i>'
+        outdict['filled'] = '<i>recently</i>'
 
     if prevempty > 0:
         outdict['prevempty'] = relativedate(prevempty)
     else:
-        outdict['prevempty'] = '<i>unknown</i>'
+        outdict['prevempty'] = '<i>awhile back</i>'
 
     if (prevempty > 0) and (lastfull > 0):
         duration = float(lastfull - prevempty)
@@ -150,8 +150,8 @@ def printjs(statsdict):
     document.write("%(freakout)s");
     document.write("<div id='progressbar'></div>");
     document.write("<p style='text-align:justify;'>The dehumidifier was last ");
-    document.write("emptied on %(emptied)s, ");
-    document.write("and was last reported full on %(filled)s. ");
+    document.write("emptied %(emptied)s, ");
+    document.write("and was last reported full %(filled)s. ");
     document.write("The last cycle took %(duration)s, starting ");
     document.write("%(prevempty)s. ");
     document.write("<i>%(fortune)s</i></p>");
