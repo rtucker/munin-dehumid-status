@@ -17,14 +17,19 @@ def relativedate(ts):
         else:
             ess = 's'
         return '%i minute%s ago' % (delta/60, ess)
-    elif delta < 24*60*60:
+    elif delta < 4*60*60:
         if int(delta/24/60) == 1:
             ess = ''
         else:
             ess = 's'
         return '%i hour%s ago' % (delta/60/60, ess)
     elif delta < 7*24*60*60:
-        return time.strftime('%A at %H:%M %Z', time.localtime(ts))
+        if time.localtime(time.time()).tm_yday == time.localtime(ts).tm_yday:
+            return time.strftime('today at %H:%M %Z', time.localtime(ts))
+        elif time.localtime(time.time()).tm_yday == time.localtime(ts).tm_yday+1:
+            return time.strftime('yesterday at %H:%M %Z', time.localtime(ts))
+        else:
+            return time.strftime('%A at %H:%M %Z', time.localtime(ts))
     elif delta < 30*24*60*60:
         return time.strftime('%A, %B %d', time.localtime(ts))
     else:
