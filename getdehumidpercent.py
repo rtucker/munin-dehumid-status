@@ -4,8 +4,31 @@ import os
 import sys
 import time
 
-timeformat = '%A at %H:%M %Z'
 rrdfile = '/var/lib/munin/hoopycat.com/arrogant-bastard-dehumid_hoopydehumid-hoopydehumid-g.rrd'
+
+def relativedate(ts):
+    # produces a nice relative date given a timestamp
+    delta = time.time() - ts
+    if delta < 0:
+        return 'in the future'
+    elif delta < 60*60:
+        if int(delta/60) == 1:
+            ess = ''
+        else:
+            ess = 's'
+        return '%i minute%s ago' % (delta/60, ess)
+    elif delta < 24*60*60:
+        if int(delta/24/60) == 1:
+            ess = ''
+        else:
+            ess = 's'
+        return '%i hour%s ago' % (delta/60/60, ess)
+    elif delta < 7*24*60*60:
+        return time.strftime('%A at %H:%M %Z', time.localtime(ts))
+    elif delta < 30*24*60*60:
+        return time.strftime('%A, %B %d', time.localtime(ts))
+    else:
+        return time.strftime('%B %d, %Y', time.localtime(ts))
 
 def getstats():
     fd0 = os.popen('rrdtool fetch %s MAX -s -30days -e -9days' % rrdfile)
@@ -61,17 +84,17 @@ def getstats():
                'prevempty_ts': prevempty}
 
     if lastempty > 0:
-        outdict['emptied'] = time.strftime(timeformat, time.localtime(lastempty))
+        outdict['emptied'] = relativedate(lastempty)
     else:
         outdict['emptied'] = '<i>unknown</i>'
 
     if lastfull > 0:
-        outdict['filled'] = time.strftime(timeformat, time.localtime(lastfull))
+        outdict['filled'] = relativedate(lastfull)
     else:
         outdict['filled'] = '<i>unknown</i>'
 
     if prevempty > 0:
-        outdict['prevempty'] = time.strftime(timeformat, time.localtime(prevempty))
+        outdict['prevempty'] = relativedate(prevempty)
     else:
         outdict['prevempty'] = '<i>unknown</i>'
 
@@ -94,7 +117,7 @@ def printhtml(statsdict):
     sys.stdout.write("""Content-type: text/html
 
         <html>
-            <title>Now %(percent)i%% full.  Last emptied %(emptied)s, last full on %(filled)s after running for %(duration)s.</title>
+            <title>Now %(percent)i%% full.  Last emptied %(emptied)s, last full %(filled)s after running for %(duration)s.</title>
         <body>
             <ul>
                 <li>Percent full: %(percent)i%%</li>
