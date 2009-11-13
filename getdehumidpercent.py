@@ -66,6 +66,9 @@ def getstats():
         if percent < 20 and not lastfull and not prevempty:
             # pretty much empty
             lastempty = i[0]
+        elif lastempty and percent > 60 and not lastfull and not prevempty:
+            # it was >60% full, then someone emptied it "early"
+            lastfull = i[0]
         elif percent > 95 and not prevempty:
             # full
             lastfull = i[0]
