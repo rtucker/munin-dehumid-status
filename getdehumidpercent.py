@@ -8,21 +8,14 @@ rrdfile = '/var/lib/munin/hoopycat.com/arrogant-bastard-dehumid_hoopydehumid-hoo
 
 def relativedate(ts):
     # produces a nice relative date given a timestamp
+    plural = lambda x: 's' if (x < 1 or x > 2) else ''
     delta = time.time() - ts
     if delta < 0:
         return 'in the future'
     elif delta < 60*60:
-        if int(delta/60) == 1:
-            ess = ''
-        else:
-            ess = 's'
-        return '%i minute%s ago' % (delta/60, ess)
+        return '%i minute%s ago' % (delta/60, plural(delta/60))
     elif delta < 4*60*60:
-        if int(delta/24/60) == 1:
-            ess = ''
-        else:
-            ess = 's'
-        return '%i hour%s ago' % (delta/60/60, ess)
+        return '%i hour%s ago' % (delta/60/60, plural(delta/60/60))
     elif delta < 7*24*60*60:
         if time.localtime(time.time()).tm_yday == time.localtime(ts).tm_yday:
             return time.strftime('today at %H:%M %Z', time.localtime(ts))
@@ -106,12 +99,13 @@ def getstats():
     if (prevempty > 0) and (lastfull > 0):
         duration = float(lastfull - prevempty)
         outdict['duration_sec'] = duration
+        plural = lambda x: 's' if (x < 1 or x > 2) else ''
         if duration > 1.5*7*24*60*60:
-            outdict['duration'] = '%.1f weeks' % (duration/(7*24*60*60))
+            outdict['duration'] = '%.1f week%s' % (duration/(7*24*60*60), plural(duration/(7*24*60*60)))
         elif duration > 2*24*60*60:
-            outdict['duration'] = '%.1f days' % (duration/(24*60*60))
+            outdict['duration'] = '%.1f day%s' % (duration/(24*60*60), plural(duration/(24*60*60)))
         else:
-            outdict['duration'] = '%.1f hours' % (duration/(60*60))
+            outdict['duration'] = '%.1f hour%s' % (duration/(60*60), plural(duration/(60*60)))
     else:
         outdict['duration'] = '<i>unknown</i>'
         outdict['duration_sec'] = -1
