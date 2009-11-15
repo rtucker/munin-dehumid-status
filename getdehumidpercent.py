@@ -75,7 +75,7 @@ def getstats():
         elif percent < 20 and lastfull:
             # previous empty
             prevempty = i[0]
-        elif percent > 95 and prevempty:
+        elif percent > 60 and prevempty:
             # we're back to the full before the empty
             stop = True
 
