@@ -4,8 +4,29 @@ import os
 import sys
 import time
 
-timeformat = '%A at %H:%M %Z'
 rrdfile = '/var/lib/munin/hoopycat.com/arrogant-bastard-dehumid_hoopydehumid-hoopydehumid-g.rrd'
+
+def relativedate(ts):
+    # produces a nice relative date given a timestamp
+    plural = lambda x: 's' if (x < 1 or x > 2) else ''
+    delta = time.time() - ts
+    if delta < 0:
+        return 'in the future'
+    elif delta < 60*60:
+        return '%i minute%s ago' % (delta/60, plural(delta/60))
+    elif delta < 4*60*60:
+        return '%i hour%s ago' % (delta/60/60, plural(delta/60/60))
+    elif delta < 7*24*60*60:
+        if time.localtime(time.time()).tm_yday == time.localtime(ts).tm_yday:
+            return time.strftime('today at %H:%M %Z', time.localtime(ts))
+        elif time.localtime(time.time()).tm_yday == time.localtime(ts).tm_yday+1:
+            return time.strftime('yesterday at %H:%M %Z', time.localtime(ts))
+        else:
+            return time.strftime('%A at %H:%M %Z', time.localtime(ts))
+    elif delta < 30*24*60*60:
+        return time.strftime('%A, %B %d', time.localtime(ts))
+    else:
+        return time.strftime('%B %d, %Y', time.localtime(ts))
 
 def getstats():
     fd0 = os.popen('rrdtool fetch %s MAX -s -30days -e -9days' % rrdfile)
@@ -45,6 +66,9 @@ def getstats():
         if percent < 20 and not lastfull and not prevempty:
             # pretty much empty
             lastempty = i[0]
+        elif lastempty and percent > 60 and not lastfull and not prevempty:
+            # it was >60% full, then someone emptied it "early"
+            lastfull = i[0]
         elif percent > 95 and not prevempty:
             # full
             lastfull = i[0]
@@ -61,29 +85,30 @@ def getstats():
                'prevempty_ts': prevempty}
 
     if lastempty > 0:
-        outdict['emptied'] = time.strftime(timeformat, time.localtime(lastempty))
+        outdict['emptied'] = relativedate(lastempty)
     else:
-        outdict['emptied'] = '<i>unknown</i>'
+        outdict['emptied'] = '<i>at some point</i>'
 
     if lastfull > 0:
-        outdict['filled'] = time.strftime(timeformat, time.localtime(lastfull))
+        outdict['filled'] = relativedate(lastfull)
     else:
-        outdict['filled'] = '<i>unknown</i>'
+        outdict['filled'] = '<i>recently</i>'
 
     if prevempty > 0:
-        outdict['prevempty'] = time.strftime(timeformat, time.localtime(prevempty))
+        outdict['prevempty'] = relativedate(prevempty)
     else:
-        outdict['prevempty'] = '<i>unknown</i>'
+        outdict['prevempty'] = '<i>awhile back</i>'
 
     if (prevempty > 0) and (lastfull > 0):
-        duration = lastfull - prevempty
+        duration = float(lastfull - prevempty)
         outdict['duration_sec'] = duration
+        plural = lambda x: 's' if (x < 1 or x > 2) else ''
         if duration > 1.5*7*24*60*60:
-            outdict['duration'] = '%.1f weeks' % (duration/(7*24*60*60))
+            outdict['duration'] = '%.1f week%s' % (duration/(7*24*60*60), plural(duration/(7*24*60*60)))
         elif duration > 2*24*60*60:
-            outdict['duration'] = '%.1f days' % (duration/(24*60*60))
+            outdict['duration'] = '%.1f day%s' % (duration/(24*60*60), plural(duration/(24*60*60)))
         else:
-            outdict['duration'] = '%.1f hours' % (duration/(60*60))
+            outdict['duration'] = '%.1f hour%s' % (duration/(60*60), plural(duration/(60*60)))
     else:
         outdict['duration'] = '<i>unknown</i>'
         outdict['duration_sec'] = -1
@@ -94,7 +119,7 @@ def printhtml(statsdict):
     sys.stdout.write("""Content-type: text/html
 
         <html>
-            <title>Now %(percent)i%% full.  Last emptied %(emptied)s, last full on %(filled)s after running for %(duration)s.</title>
+            <title>Now %(percent)i%% full.  Last emptied %(emptied)s, last full %(filled)s after running for %(duration)s.</title>
         <body>
             <ul>
                 <li>Percent full: %(percent)i%%</li>
@@ -122,8 +147,8 @@ def printjs(statsdict):
     document.write("%(freakout)s");
     document.write("<div id='progressbar'></div>");
     document.write("<p style='text-align:justify;'>The dehumidifier was last ");
-    document.write("emptied on %(emptied)s, ");
-    document.write("and was last reported full on %(filled)s. ");
+    document.write("emptied %(emptied)s, ");
+    document.write("and was last reported full %(filled)s. ");
     document.write("The last cycle took %(duration)s, starting ");
     document.write("%(prevempty)s. ");
     document.write("<i>%(fortune)s</i></p>");
