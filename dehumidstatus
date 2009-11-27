@@ -149,8 +149,9 @@ def get_fullness_via_capacitance(name):
     ser.close()
 
     if len(results) >= 5:
-        # Pick the median
-        capacitance = sorted(results)[int(len(results)/2)]
+        # Discard the first and last; take the average.
+        tmpresults = results[1:len(results)-1]
+        capacitance = sum(results)/len(results)
     else:
         # We did not get 5 values out; abort since our data is likely bad
         return None
@@ -167,7 +168,8 @@ def get_fullness_via_capacitance(name):
     immersed = numcaps - int((capvalue/capacitance) + 0.5)
     waterlevel = (immersed/float(numcaps-1))*100
 
-    # Some test code to overlay a non-floored plot...
+    # The floor function works well near the ends, but in the middle, the
+    # raw looks cleaner.
     rawimmersed = numcaps - (capvalue/capacitance)
     rawwaterlevel = (rawimmersed/float(numcaps-1))*100
     sys.stdout.write("raw.value %i\n" % rawwaterlevel)
@@ -180,8 +182,11 @@ def get_fullness_via_capacitance(name):
         # Capacitance is greater than we'd see with 2 caps in series
         sys.stderr.write('full!\n')
         return 100
+    elif waterlevel > 33 and waterlevel < 77:
+        sys.stderr.write('%f capacitors immersed (raw)\n' % rawimmersed)
+        return rawwaterlevel
     else:
-        sys.stderr.write('%i capacitors immersed\n' % immersed)
+        sys.stderr.write('%i capacitors immersed (floor)\n' % immersed)
         return waterlevel
 
 def update_twitter(twittername, twitterpass, fullness):
