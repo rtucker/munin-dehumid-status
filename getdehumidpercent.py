@@ -79,10 +79,21 @@ def getstats():
             # we're back to the full before the empty
             stop = True
 
+    # consider how long we might have left on this tank
+    if percent > 20 and lastempty:
+        elapsed_time = time.time() - lastempty
+        estimated_time = ((elapsed_time * 100) / mostrecent[1])
+        remaining_time = estimated_time - elapsed_time
+        predicted_full_ts = time.time() + remaining_time
+    else:
+        elapsed_time = estimated_time = remaining_time = predicted_full_ts = 0
+
     outdict = {'percent': mostrecent[1],
                'emptied_ts': lastempty,
                'filled_ts': lastfull,
-               'prevempty_ts': prevempty}
+               'prevempty_ts': prevempty,
+               'remaining_time': remaining_time,
+               'predicted_full_ts': predicted_full_ts}
 
     if lastempty > 0:
         outdict['emptied'] = relativedate(lastempty)
@@ -98,6 +109,19 @@ def getstats():
         outdict['prevempty'] = relativedate(prevempty)
     else:
         outdict['prevempty'] = '<i>awhile back</i>'
+
+    if predicted_full_ts > 0:
+        plural = lambda x: 's' if (x < 1 or x > 2) else ''
+        if remaining_time > 1.5*7*24*60*60:
+            outdict['predicted_full'] = 'about %i week%s' % (remaining_time/(7*24*60*60), plural(remaining_time/(7*24*60*60)))
+        elif remaining_time > 2*24*60*60:
+            outdict['predicted_full'] = 'about %i day%s' % (remaining_time/(24*60*60), plural(remaining_time/(24*60*60)))
+        elif remaining_time > 60*60:
+            outdict['predicted_full'] = 'about %i hour%s' % (remaining_time/(60*60), plural(remaining_time/(60*60)))
+        else:
+            outdict['predicted_full'] = 'within the hour'
+    else:
+        outdict['predicted_full'] = '<i>some time</i>'
 
     if (prevempty > 0) and (lastfull > 0):
         duration = float(lastfull - prevempty)
@@ -119,10 +143,10 @@ def printhtml(statsdict):
     sys.stdout.write("""Content-type: text/html
 
         <html>
-            <title>Now %(percent)i%% full.  Last emptied %(emptied)s, last full %(filled)s after running for %(duration)s.</title>
+            <title>Now %(percent)i%% full (%(predicted_full)s remaining).  Last emptied %(emptied)s, last full %(filled)s after running for %(duration)s.</title>
         <body>
             <ul>
-                <li>Percent full: %(percent)i%%</li>
+                <li>Percent full: %(percent)i%% (%(predicted_full)s remaining)</li>
                 <li>Last emptied: %(emptied)s</li>
                 <li>Last full: %(filled)s</li>
                 <li>Last cycle took %(duration)s (since %(prevempty)s)</li>
@@ -151,6 +175,7 @@ def printjs(statsdict):
     document.write("and was last reported full %(filled)s. ");
     document.write("The last cycle took %(duration)s, starting ");
     document.write("%(prevempty)s. ");
+    document.write("Scientists predict the tank will be full in %(predicted_full)s. ")
     document.write("<i>%(fortune)s</i></p>");
     jQuery("#progressbar").reportprogress(%(percent)i);
     \n""" % statsdict)
