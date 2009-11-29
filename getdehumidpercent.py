@@ -80,7 +80,7 @@ def getstats():
             stop = True
 
     # consider how long we might have left on this tank
-    if percent > 20 and lastempty:
+    if mostrecent[1] > 20 and lastempty:
         elapsed_time = time.time() - lastempty
         estimated_time = ((elapsed_time * 100) / mostrecent[1])
         remaining_time = estimated_time - elapsed_time
