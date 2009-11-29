@@ -120,6 +120,8 @@ def getstats():
             outdict['predicted_full'] = 'about %i hour%s' % (remaining_time/(60*60), plural(remaining_time/(60*60)))
         else:
             outdict['predicted_full'] = 'within the hour'
+    elif mostrecent[1] > 80:
+        outdict['predicted_full'] = '<i>very little</i>'
     else:
         outdict['predicted_full'] = '<i>some time</i>'
 
