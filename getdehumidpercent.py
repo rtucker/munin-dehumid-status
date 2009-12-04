@@ -165,8 +165,10 @@ def getstats():
             outdict['predicted_full'] = 'about %i day%s' % (remaining_time/(24*60*60), plural(remaining_time/(24*60*60)))
         elif remaining_time > 60*60:
             outdict['predicted_full'] = 'about %i hour%s' % (remaining_time/(60*60), plural(remaining_time/(60*60)))
-        else:
+        elif remaining_time > 0:
             outdict['predicted_full'] = 'about %i minute%s' % (remaining_time/(60), plural(remaining_time/(60)))
+        else:
+            outdict['predicted_full'] = 'mere moments'
     elif mostrecent[1] > 80:
         outdict['predicted_full'] = '<i>very little time</i>'
     else:
