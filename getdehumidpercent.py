@@ -135,7 +135,6 @@ def getstats():
         delta_y = max_y-min_y
         delta_x = points[max_y]-points[min_y]
         outdict['newslope'] = delta_y/float(delta_x)
-        print `points`, `keys`, max_y, min_y, delta_x, delta_y
     else:
         outdict['newslope'] = 0
 
@@ -169,7 +168,7 @@ def getstats():
         else:
             outdict['predicted_full'] = 'about %i minute%s' % (remaining_time/(60), plural(remaining_time/(60)))
     elif mostrecent[1] > 80:
-        outdict['predicted_full'] = '<i>very little</i>'
+        outdict['predicted_full'] = '<i>very little time</i>'
     else:
         outdict['predicted_full'] = '<i>some time</i>'
 
