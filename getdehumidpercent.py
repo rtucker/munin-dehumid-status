@@ -38,6 +38,7 @@ def getstats():
     prevempty = 0
     lastfull = 0
     lastempty = 0
+    points = {}
     stop = False
     cache = []
     mostrecent = None
@@ -79,21 +80,16 @@ def getstats():
             # we're back to the full before the empty
             stop = True
 
-    # consider how long we might have left on this tank
-    if mostrecent[1] > 20 and lastempty:
-        elapsed_time = time.time() - lastempty
-        estimated_time = ((elapsed_time * 100) / mostrecent[1])
-        remaining_time = estimated_time - elapsed_time
-        predicted_full_ts = time.time() + remaining_time
-    else:
-        elapsed_time = estimated_time = remaining_time = predicted_full_ts = 0
+        # store some points
+        if not prevempty:
+            for step in [90,80,70,60,50,40,30,20,10]:
+                if percent > step:
+                    points[step] = i[0]
 
     outdict = {'percent': mostrecent[1],
                'emptied_ts': lastempty,
                'filled_ts': lastfull,
-               'prevempty_ts': prevempty,
-               'remaining_time': remaining_time,
-               'predicted_full_ts': predicted_full_ts}
+               'prevempty_ts': prevempty}
 
     if lastempty > 0:
         outdict['emptied'] = relativedate(lastempty)
@@ -110,21 +106,6 @@ def getstats():
     else:
         outdict['prevempty'] = '<i>awhile back</i>'
 
-    if predicted_full_ts > 0:
-        plural = lambda x: 's' if (x < 1 or x > 2) else ''
-        if remaining_time > 1.5*7*24*60*60:
-            outdict['predicted_full'] = 'about %i week%s' % (remaining_time/(7*24*60*60), plural(remaining_time/(7*24*60*60)))
-        elif remaining_time > 2*24*60*60:
-            outdict['predicted_full'] = 'about %i day%s' % (remaining_time/(24*60*60), plural(remaining_time/(24*60*60)))
-        elif remaining_time > 60*60:
-            outdict['predicted_full'] = 'about %i hour%s' % (remaining_time/(60*60), plural(remaining_time/(60*60)))
-        else:
-            outdict['predicted_full'] = 'within the hour'
-    elif mostrecent[1] > 80:
-        outdict['predicted_full'] = '<i>very little</i>'
-    else:
-        outdict['predicted_full'] = '<i>some time</i>'
-
     if (prevempty > 0) and (lastfull > 0):
         duration = float(lastfull - prevempty)
         outdict['duration_sec'] = duration
@@ -139,6 +120,59 @@ def getstats():
         outdict['duration'] = '<i>unknown</i>'
         outdict['duration_sec'] = -1
 
+    # compute slope of last run
+    if outdict['duration_sec'] > 0:
+        outdict['oldslope'] = 100/float(outdict['duration_sec'])
+    else:
+        outdict['oldslope'] = 0
+
+    # compute slope of this tank
+    if len(points.keys()) > 3:
+        keys = points.keys()
+        keys.sort()
+        max_y = keys[-2:-1][0]
+        min_y = keys[1]
+        delta_y = max_y-min_y
+        delta_x = points[max_y]-points[min_y]
+        outdict['newslope'] = delta_y/float(delta_x)
+        print `points`, `keys`, max_y, min_y, delta_x, delta_y
+    else:
+        outdict['newslope'] = 0
+
+    if outdict['newslope'] > 0:
+        workingslope = outdict['newslope']
+    elif outdict['oldslope'] > 0:
+        workingslope = outdict['oldslope']
+    else:
+        workingslope = -1
+
+    # consider how long we might have left on this tank
+    if lastempty and workingslope > 0:
+        elapsed_time = time.time() - lastempty
+        estimated_time = 1/(.01*workingslope)
+        remaining_time = estimated_time - elapsed_time
+        predicted_full_ts = time.time() + remaining_time
+    else:
+        elapsed_time = estimated_time = remaining_time = predicted_full_ts = 0
+
+    outdict['remaining_time'] = remaining_time
+    outdict['predicted_full_ts'] = predicted_full_ts
+
+    if predicted_full_ts > 0:
+        plural = lambda x: 's' if (x < 1 or x > 2) else ''
+        if remaining_time > 1.5*7*24*60*60:
+            outdict['predicted_full'] = 'about %i week%s' % (remaining_time/(7*24*60*60), plural(remaining_time/(7*24*60*60)))
+        elif remaining_time > 2*24*60*60:
+            outdict['predicted_full'] = 'about %i day%s' % (remaining_time/(24*60*60), plural(remaining_time/(24*60*60)))
+        elif remaining_time > 60*60:
+            outdict['predicted_full'] = 'about %i hour%s' % (remaining_time/(60*60), plural(remaining_time/(60*60)))
+        else:
+            outdict['predicted_full'] = 'about %i minute%s' % (remaining_time/(60), plural(remaining_time/(60)))
+    elif mostrecent[1] > 80:
+        outdict['predicted_full'] = '<i>very little</i>'
+    else:
+        outdict['predicted_full'] = '<i>some time</i>'
+
     return outdict
 
 def printhtml(statsdict):
@@ -152,6 +186,7 @@ def printhtml(statsdict):
                 <li>Last emptied: %(emptied)s</li>
                 <li>Last full: %(filled)s</li>
                 <li>Last cycle took %(duration)s (since %(prevempty)s)</li>
+                <li>Old slope: %(oldslope)f, new slope: %(newslope)f, predicted full ts: %(predicted_full_ts)i</li>
             </ul>
         </body>
     </html>\n""" % statsdict)
