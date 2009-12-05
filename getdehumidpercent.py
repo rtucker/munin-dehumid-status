@@ -67,6 +67,9 @@ def getstats():
         if percent < 20 and not lastfull and not prevempty:
             # pretty much empty
             lastempty = i[0]
+        elif percent > 80 and lastfull and not lastempty and mostrecent[1] > 80 and mostrecent[1] < 95:
+            # we're bouncing
+            lastfull = 0
         elif lastempty and percent > 60 and not lastfull and not prevempty:
             # it was >60% full, then someone emptied it "early"
             lastfull = i[0]
@@ -169,6 +172,8 @@ def getstats():
             outdict['predicted_full'] = 'about %i minute%s' % (remaining_time/(60), plural(remaining_time/(60)))
         else:
             outdict['predicted_full'] = 'mere moments'
+    elif mostrecent[1] > 95:
+        outdict['predicted_full'] = 'no time'
     elif mostrecent[1] > 80:
         outdict['predicted_full'] = '<i>very little time</i>'
     else:
