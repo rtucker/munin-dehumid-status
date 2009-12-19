@@ -86,8 +86,9 @@ def getstats():
         # store some points
         if not prevempty:
             for step in [90,80,70,60,50,40,30,20,10]:
-                if percent > step:
+                if (percent > step) and (step-10 not in points.keys()):
                     points[step] = i[0]
+                    break
 
     outdict = {'percent': mostrecent[1],
                'emptied_ts': lastempty,
@@ -138,13 +139,21 @@ def getstats():
         delta_y = max_y-min_y
         delta_x = points[max_y]-points[min_y]
         outdict['newslope'] = delta_y/float(delta_x)
+        outdict['debug_slope'] = []
+        for i in keys:
+             outdict['debug_slope'].append('%i%% at %s' % (
+                i, time.strftime('%Y-%m-%d %H:%M', time.localtime(points[i]))))
+        outdict['debug_slope'].append('(%i, %i) to (%i, %i) => (%i, %i)' % (
+            points[min_y], min_y, points[max_y], max_y, delta_x, delta_y))
     else:
         outdict['newslope'] = 0
+        outdict['debug_slope'] = ['Only %i points, no new slope' % len(points.keys())]
 
     if outdict['newslope'] > 0:
         workingslope = outdict['newslope']
     elif outdict['oldslope'] > 0:
         workingslope = outdict['oldslope']
+        outdict['debug_slope'].append('Using old slope')
     else:
         workingslope = -1
 
@@ -179,6 +188,8 @@ def getstats():
     else:
         outdict['predicted_full'] = '<i>some time</i>'
 
+    outdict['debug_slope_str'] = ''.join(['%s\n' % i for i in outdict['debug_slope']])
+
     return outdict
 
 def printhtml(statsdict):
@@ -192,14 +203,15 @@ def printhtml(statsdict):
                 <li>Last emptied: %(emptied)s</li>
                 <li>Last full: %(filled)s</li>
                 <li>Last cycle took %(duration)s (since %(prevempty)s)</li>
-                <li>Old slope: %(oldslope)f, new slope: %(newslope)f, predicted full ts: %(predicted_full_ts)i</li>
             </ul>
+            <pre>Old slope: %(oldslope)f, new slope: %(newslope)f, predicted full ts: %(predicted_full_ts)i</pre>
+            <pre>%(debug_slope_str)s</pre>
         </body>
     </html>\n""" % statsdict)
 
 def printjs(statsdict):
-    statsdict['fortune'] = ''.join(os.popen('/usr/games/fortune -s')\
-        .readlines()).replace('"','\\"').strip().replace('\n',' ')
+    #statsdict['fortune'] = ''.join(os.popen('/usr/games/fortune -s')\
+    #    .readlines()).replace('"','\\"').strip().replace('\n',' ')
 
     statsdict['expires'] = time.strftime('%a, %d %b %Y %H:%M:%S GMT',
         time.gmtime(time.time()+(20*60)))
@@ -213,13 +225,12 @@ def printjs(statsdict):
 
     document.write("%(freakout)s");
     document.write("<div id='progressbar'></div>");
-    document.write("<p style='text-align:justify;'>The dehumidifier was last ");
-    document.write("emptied %(emptied)s, ");
-    document.write("and was last reported full %(filled)s. ");
-    document.write("The last cycle took %(duration)s, starting ");
-    document.write("%(prevempty)s. ");
-    document.write("Scientists predict the tank will be full in %(predicted_full)s. ")
-    document.write("<i>%(fortune)s</i></p>");
+    document.write("<ul>");
+    document.write("<li>Tank last emptied %(emptied)s</li>");
+    document.write("<li>Last run took %(duration)s ");
+    document.write("(from %(prevempty)s to %(filled)s)</li>");
+    document.write("<li>Estimated time to full: %(predicted_full)s</li>")
+    document.write("</ul>");
     jQuery("#progressbar").reportprogress(%(percent)i);
     \n""" % statsdict)
 
