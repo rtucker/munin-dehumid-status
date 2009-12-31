@@ -185,6 +185,9 @@ def get_fullness_via_capacitance(name):
     elif waterlevel > 33 and waterlevel < 77:
         sys.stderr.write('%f capacitors immersed (raw)\n' % rawimmersed)
         return rawwaterlevel
+    elif rawwaterlevel < 10:
+        sys.stderr.write('0 capacitors immersed (%i < 10)\n' % rawwaterlevel)
+        return 0
     else:
         sys.stderr.write('%i capacitors immersed (floor)\n' % immersed)
         return waterlevel
@@ -214,7 +217,7 @@ def update_twitter(twittername, twitterpass, fullness):
         api = twitter.Api(username=twittername, password=twitterpass)
         status = api.PostUpdate(outgoing + ' ' + ''.join(random.sample('MOIST',5)))
         if status:
-            sys.stderr.write('Twitter: TX %s, RX %s\n' % outgoing, status.text)
+            sys.stderr.write('Twitter: TX %s, RX %s\n' % (outgoing, status.text))
             return True
     return False
 
