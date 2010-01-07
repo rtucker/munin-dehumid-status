@@ -21,8 +21,11 @@ import os
 import random
 import re
 import serial
+import smtplib
 import sys
 import time
+
+from email.mime.text import MIMEText
 
 
 try:
@@ -47,7 +50,8 @@ __dehumidifiers__ = {
          'capvalue': 0.1e-6,
          'showraw': False,
          'warn': True,
-         'updatetwitter': 'Tank is %i%% full'}
+         'updatetwitter': 'Tank is %i%% full',
+         'hiveminder': 'gristufastu@my.hiveminder.com'}
     }
 
 class _FixedFileCache(twitter._FileCache):
@@ -221,6 +225,17 @@ def update_twitter(twittername, twitterpass, fullness):
             return True
     return False
 
+def send_mail(addr, txt):
+    msg = MIMEText(txt + "\n")
+    msg['Subject'] = txt
+    msg['From'] = 'nobody@hoopycat.com'
+    msg['To'] = addr
+    s = smtplib.SMTP('localhost')
+    s.sendmail('nobody@hoopycat.com', [addr], msg.as_string())
+    s.quit()
+
+    return True
+
 def main():
     """main function to handle munin fun"""
     myname = os.path.split(sys.argv[0])[-1].split('_')[1]
@@ -242,6 +257,15 @@ def main():
                     update_twitter(twittername=myname,
                                    twitterpass=os.environ[myname],
                                    fullness=fullness)
+            if fullness == 100 and 'hiveminder' in __dehumidifiers__[myname].keys() and not os.path.exists('/tmp/munin-dehumid-%s-hmsent' % myname):
+                # open a hiveminder task via e-mail
+                if send_mail(__dehumidifiers__[myname]['hiveminder'],
+                          "Empty the dehumidifier"):
+                    fd = open('/tmp/munin-dehumid-%s-hmsent' % myname, 'w')
+                    fd.write(str(time.time()))
+                    fd.close()
+            if fullness < 20 and os.path.exists('/tmp/munin-dehumid-%s-hmsent' % myname):
+                os.unlink('/tmp/munin-dehumid-%s-hmsent' % myname)
 
 if __name__ == '__main__':
     main()
