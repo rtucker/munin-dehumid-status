@@ -38,6 +38,7 @@ def getstats():
     prevempty = 0
     lastfull = 0
     lastempty = 0
+    points = {}
     stop = False
     cache = []
     mostrecent = None
@@ -66,6 +67,9 @@ def getstats():
         if percent < 20 and not lastfull and not prevempty:
             # pretty much empty
             lastempty = i[0]
+        elif percent > 80 and lastfull and not lastempty and mostrecent[1] > 80 and mostrecent[1] < 95:
+            # we're bouncing
+            lastfull = 0
         elif lastempty and percent > 60 and not lastfull and not prevempty:
             # it was >60% full, then someone emptied it "early"
             lastfull = i[0]
@@ -75,9 +79,15 @@ def getstats():
         elif percent < 20 and lastfull:
             # previous empty
             prevempty = i[0]
-        elif percent > 95 and prevempty:
+        elif percent > 60 and prevempty:
             # we're back to the full before the empty
             stop = True
+
+        # store some points
+        if not prevempty:
+            for step in [90,80,70,60,50,40,30,20,10]:
+                if percent > step:
+                    points[step] = i[0]
 
     outdict = {'percent': mostrecent[1],
                'emptied_ts': lastempty,
@@ -113,19 +123,76 @@ def getstats():
         outdict['duration'] = '<i>unknown</i>'
         outdict['duration_sec'] = -1
 
+    # compute slope of last run
+    if outdict['duration_sec'] > 0:
+        outdict['oldslope'] = 100/float(outdict['duration_sec'])
+    else:
+        outdict['oldslope'] = 0
+
+    # compute slope of this tank
+    if len(points.keys()) > 3:
+        keys = points.keys()
+        keys.sort()
+        max_y = keys[-2:-1][0]
+        min_y = keys[1]
+        delta_y = max_y-min_y
+        delta_x = points[max_y]-points[min_y]
+        outdict['newslope'] = delta_y/float(delta_x)
+    else:
+        outdict['newslope'] = 0
+
+    if outdict['newslope'] > 0:
+        workingslope = outdict['newslope']
+    elif outdict['oldslope'] > 0:
+        workingslope = outdict['oldslope']
+    else:
+        workingslope = -1
+
+    # consider how long we might have left on this tank
+    if lastempty and workingslope > 0:
+        elapsed_time = time.time() - lastempty
+        estimated_time = 1/(.01*workingslope)
+        remaining_time = estimated_time - elapsed_time
+        predicted_full_ts = time.time() + remaining_time
+    else:
+        elapsed_time = estimated_time = remaining_time = predicted_full_ts = 0
+
+    outdict['remaining_time'] = remaining_time
+    outdict['predicted_full_ts'] = predicted_full_ts
+
+    if predicted_full_ts > 0:
+        plural = lambda x: 's' if (x < 1 or x > 2) else ''
+        if remaining_time > 1.5*7*24*60*60:
+            outdict['predicted_full'] = 'about %i week%s' % (remaining_time/(7*24*60*60), plural(remaining_time/(7*24*60*60)))
+        elif remaining_time > 2*24*60*60:
+            outdict['predicted_full'] = 'about %i day%s' % (remaining_time/(24*60*60), plural(remaining_time/(24*60*60)))
+        elif remaining_time > 60*60:
+            outdict['predicted_full'] = 'about %i hour%s' % (remaining_time/(60*60), plural(remaining_time/(60*60)))
+        elif remaining_time > 0:
+            outdict['predicted_full'] = 'about %i minute%s' % (remaining_time/(60), plural(remaining_time/(60)))
+        else:
+            outdict['predicted_full'] = 'mere moments'
+    elif mostrecent[1] > 95:
+        outdict['predicted_full'] = 'no time'
+    elif mostrecent[1] > 80:
+        outdict['predicted_full'] = '<i>very little time</i>'
+    else:
+        outdict['predicted_full'] = '<i>some time</i>'
+
     return outdict
 
 def printhtml(statsdict):
     sys.stdout.write("""Content-type: text/html
 
         <html>
-            <title>Now %(percent)i%% full.  Last emptied %(emptied)s, last full %(filled)s after running for %(duration)s.</title>
+            <title>Now %(percent)i%% full (%(predicted_full)s remaining).  Last emptied %(emptied)s, last full %(filled)s after running for %(duration)s.</title>
         <body>
             <ul>
-                <li>Percent full: %(percent)i%%</li>
+                <li>Percent full: %(percent)i%% (%(predicted_full)s remaining)</li>
                 <li>Last emptied: %(emptied)s</li>
                 <li>Last full: %(filled)s</li>
                 <li>Last cycle took %(duration)s (since %(prevempty)s)</li>
+                <li>Old slope: %(oldslope)f, new slope: %(newslope)f, predicted full ts: %(predicted_full_ts)i</li>
             </ul>
         </body>
     </html>\n""" % statsdict)
@@ -151,6 +218,7 @@ def printjs(statsdict):
     document.write("and was last reported full %(filled)s. ");
     document.write("The last cycle took %(duration)s, starting ");
     document.write("%(prevempty)s. ");
+    document.write("Scientists predict the tank will be full in %(predicted_full)s. ")
     document.write("<i>%(fortune)s</i></p>");
     jQuery("#progressbar").reportprogress(%(percent)i);
     \n""" % statsdict)
