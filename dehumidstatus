@@ -152,13 +152,10 @@ def get_fullness_via_capacitance(name):
     sys.stderr.write('done.\n')
     ser.close()
 
-    if len(results) >= 5:
-        # Discard the first and last; take the average.
-        tmpresults = results[1:len(results)-1]
-        capacitance = sum(results)/len(results)
-    else:
-        # We did not get 5 values out; abort since our data is likely bad
-        return None
+    # get rid of first/last values
+    results.pop(0)
+    results.pop()
+    capacitance = sum(results)/len(results)
 
     sys.stderr.write('Raw capacitance: %.2e, ' % capacitance)
 
@@ -186,7 +183,7 @@ def get_fullness_via_capacitance(name):
         # Capacitance is greater than we'd see with 2 caps in series
         sys.stderr.write('full!\n')
         return 100
-    elif waterlevel > 33 and waterlevel < 77:
+    elif rawwaterlevel > 33 and rawwaterlevel < 77:
         sys.stderr.write('%f capacitors immersed (raw)\n' % rawimmersed)
         return rawwaterlevel
     elif rawwaterlevel < 10:
@@ -249,7 +246,7 @@ def main():
                 raise ImportError('Twitter module not found for %s' % myname)
         elif __dehumidifiers__[myname]['type'] == 'capacitance':
             fullness = get_fullness_via_capacitance(myname)
-        if type(fullness) is not None:
+        if type(fullness) is not type(None):
             print '%s.value %i' % (myname, fullness)
             if 'updatetwitter' in __dehumidifiers__[myname].keys():
                 if (__dehumidifiers__[myname]['updatetwitter'] and
