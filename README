@@ -12,7 +12,8 @@ from http://arduino.cc/en/Tutorial/CapacitanceMeter
 
 Twitter support requires the following (from Debian/Ubuntu):
   python-twitter - Twitter API wrapper for Python
-  python-oauth - implementation of the OAuth protocol
+and includes oauth.py from:
+  oauth - http://code.google.com/p/oauth/
 and includes oauthtwitter.py from:
   oauth-python-twitter - http://code.google.com/p/oauth-python-twitter/
 
