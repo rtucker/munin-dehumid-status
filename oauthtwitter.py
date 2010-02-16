@@ -179,8 +179,9 @@ class OAuthApi(Api):
         signin_url = self.getAuthorizationURL(token, url)
         return signin_url
     
-    def getAccessToken(self, url=ACCESS_TOKEN_URL):
-        token = self._FetchUrl(url, no_cache=True)
+    def getAccessToken(self, pin, url=ACCESS_TOKEN_URL):
+        token = self._FetchUrl(url, parameters={'oauth_verifier': pin},
+                               no_cache=True)
         return oauth.OAuthToken.from_string(token) 
 
     def getRequestToken(self, url=REQUEST_TOKEN_URL):
