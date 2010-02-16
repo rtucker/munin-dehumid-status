@@ -10,3 +10,10 @@ some basic stats on the dehumidifier in a CGI-callable way.
 capacitance_tester.pde is based on an example sketch by Paul Badger,
 from http://arduino.cc/en/Tutorial/CapacitanceMeter
 
+Twitter support requires the following (from Debian/Ubuntu):
+  python-twitter - Twitter API wrapper for Python
+  python-oauth - implementation of the OAuth protocol
+and includes oauthtwitter.py from:
+  oauth-python-twitter - http://code.google.com/p/oauth-python-twitter/
+
+

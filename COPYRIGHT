@@ -1,3 +1,8 @@
+*** For oauthpython.py, see Apache License Version 2.0 at:
+*** http://www.apache.org/licenses/LICENSE-2.0.html
+
+For everything else:
+
 Copyright (c) 2009 Ryan S. Tucker <rtucker@gmail.com>
 Copyright (c) 2009 Dawn Lepard <dawn@lepard.ca>
 Arduino software adapted from work by Paul Badger, 2008
@@ -19,3 +24,4 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
