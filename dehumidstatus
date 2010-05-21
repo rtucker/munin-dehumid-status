@@ -21,11 +21,15 @@ import os
 import random
 import re
 import serial
+import smtplib
 import sys
 import time
 
+from email.mime.text import MIMEText
+
 
 try:
+    import oauthtwitter
     import twitter
     __twitterok__ = True
 except ImportError:
@@ -47,8 +51,13 @@ __dehumidifiers__ = {
          'capvalue': 0.1e-6,
          'showraw': False,
          'warn': True,
-         'updatetwitter': 'Tank is %i%% full'}
+         'updatetwitter': 'Tank is %i%% full',
+         'hiveminder': 'gristufastu@my.hiveminder.com'}
     }
+
+# OAuth credentials for munin-dehumid-status.
+CONSUMER_KEY = '9DeMPaUWXhe5D0O3ZBAw'
+CONSUMER_SECRET = 'wSYKFC8vnoNKNumohzyvT1sQZbxTjDIYhMFXG16mU'
 
 class _FixedFileCache(twitter._FileCache):
     """Patches twitter._FileCache._GetUsername to include a try/except, to
@@ -148,13 +157,10 @@ def get_fullness_via_capacitance(name):
     sys.stderr.write('done.\n')
     ser.close()
 
-    if len(results) >= 5:
-        # Discard the first and last; take the average.
-        tmpresults = results[1:len(results)-1]
-        capacitance = sum(results)/len(results)
-    else:
-        # We did not get 5 values out; abort since our data is likely bad
-        return None
+    # get rid of first/last values
+    results.pop(0)
+    results.pop()
+    capacitance = sum(results)/len(results)
 
     sys.stderr.write('Raw capacitance: %.2e, ' % capacitance)
 
@@ -182,18 +188,22 @@ def get_fullness_via_capacitance(name):
         # Capacitance is greater than we'd see with 2 caps in series
         sys.stderr.write('full!\n')
         return 100
-    elif waterlevel > 33 and waterlevel < 77:
+    elif rawwaterlevel > 33 and rawwaterlevel < 77:
         sys.stderr.write('%f capacitors immersed (raw)\n' % rawimmersed)
         return rawwaterlevel
+    elif rawwaterlevel < 10:
+        sys.stderr.write('0 capacitors immersed (%i < 10)\n' % rawwaterlevel)
+        return 0
     else:
         sys.stderr.write('%i capacitors immersed (floor)\n' % immersed)
         return waterlevel
 
-def update_twitter(twittername, twitterpass, fullness):
+def update_twitter(twittername, twitteroauth, fullness):
     """Transmits the current level of fullness to Twitter, if Twitter
        doesn't already have it."""
 
     sendtweet = False
+
     # Get the current fullness level, as far as Twitter knows it
     curfullstr = get_fullness_via_twitter(twittername)
 
@@ -211,12 +221,26 @@ def update_twitter(twittername, twitterpass, fullness):
 
     if sendtweet:
         outgoing = __dehumidifiers__[twittername]['updatetwitter'] % fullness
-        api = twitter.Api(username=twittername, password=twitterpass)
+        import oauth
+        access_token = oauth.OAuthToken.from_string(twitteroauth)
+        api = oauthtwitter.OAuthApi(CONSUMER_KEY, CONSUMER_SECRET, access_token)
+        api.GetUserInfo()
         status = api.PostUpdate(outgoing + ' ' + ''.join(random.sample('MOIST',5)))
         if status:
-            sys.stderr.write('Twitter: TX %s, RX %s\n' % outgoing, status.text)
+            sys.stderr.write('Twitter: TX %s, RX %s\n' % (outgoing, status.text))
             return True
     return False
+
+def send_mail(addr, txt):
+    msg = MIMEText(txt + "\n")
+    msg['Subject'] = txt
+    msg['From'] = 'nobody@hoopycat.com'
+    msg['To'] = addr
+    s = smtplib.SMTP('localhost')
+    s.sendmail('nobody@hoopycat.com', [addr], msg.as_string())
+    s.quit()
+
+    return True
 
 def main():
     """main function to handle munin fun"""
@@ -231,14 +255,23 @@ def main():
                 raise ImportError('Twitter module not found for %s' % myname)
         elif __dehumidifiers__[myname]['type'] == 'capacitance':
             fullness = get_fullness_via_capacitance(myname)
-        if type(fullness) is not None:
+        if type(fullness) is not type(None):
             print '%s.value %i' % (myname, fullness)
             if 'updatetwitter' in __dehumidifiers__[myname].keys():
                 if (__dehumidifiers__[myname]['updatetwitter'] and
-                        myname in os.environ.keys()):
+                        myname+'-oauth' in os.environ.keys()):
                     update_twitter(twittername=myname,
-                                   twitterpass=os.environ[myname],
+                                   twitteroauth=os.environ[myname+'-oauth'],
                                    fullness=fullness)
+            if fullness == 100 and 'hiveminder' in __dehumidifiers__[myname].keys() and not os.path.exists('/tmp/munin-dehumid-%s-hmsent' % myname):
+                # open a hiveminder task via e-mail
+                if send_mail(__dehumidifiers__[myname]['hiveminder'],
+                          "Empty the dehumidifier"):
+                    fd = open('/tmp/munin-dehumid-%s-hmsent' % myname, 'w')
+                    fd.write(str(time.time()))
+                    fd.close()
+            if fullness < 20 and os.path.exists('/tmp/munin-dehumid-%s-hmsent' % myname):
+                os.unlink('/tmp/munin-dehumid-%s-hmsent' % myname)
 
 if __name__ == '__main__':
     main()
