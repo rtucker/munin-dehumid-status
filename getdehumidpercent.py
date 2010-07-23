@@ -46,7 +46,7 @@ def getstats():
     for i in content:
         data = i.strip().split()
         if len(data) == 2:
-            if data[1] != 'nan':
+            if data[1] not in ['nan', '-nan']:
                 mostrecent = (int(data[0].replace(':','')), float(data[1]))
                 ts = int(data[0].replace(':',''))
                 percent = float(data[1])
