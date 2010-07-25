@@ -84,17 +84,16 @@ def print_config(name):
         desc = user.name + ' (via Twitter)'
     elif __dehumidifiers__[name]['type'] == 'capacitance':
         desc = __dehumidifiers__[name]['description'] + ' (via Arduino)'
-    print """graph_title Status for %s
-graph_args --base 1000 --lower-limit 0
-graph_vlabel Fullness (percent)
+    print """graph_title Water level in %(desc)s
+graph_vlabel Percent full
 graph_category Sensors
 graph_info Fullness of the dehumidifier
-%s.min 0
-%s.max 100
-%s.label Percent full
-%s.draw AREA""" % (desc, name, name, name, name)
+%(name)s.min 0
+%(name)s.max 100
+%(name)s.label Percent full
+%(name)s.draw AREA""" % {'desc': desc, 'name': name}
     if __dehumidifiers__[name]['warn']:
-        print """%s.warning 90\n%s.critical 100""" % (name, name)
+        print """%s.warning 85\n%s.critical 100""" % (name, name)
     if (__dehumidifiers__[name]['type'] == 'capacitance' and
         __dehumidifiers__[name]['showraw'] == True):
         print """raw.min 0\nraw.max 100\nraw.label Percent full (raw)"""
@@ -146,23 +145,18 @@ def get_fullness_via_capacitance(name):
                 # row = [milliseconds, 'mS', capacitance, 'mumbleFarads']
                 if row[3] == 'microFarads':
                     results.append(int(row[2]) * 1e-6)
-                    sys.stderr.write('%suF, ' % row[2])
                     _ok = True
                 elif row[3] == 'nanoFarads':
                     results.append(int(row[2]) * 1e-9)
-                    sys.stderr.write('%snF, ' % row[2])
                     _ok = True
                 else:
                     sys.stderr.write('try %i failed, ' % test)
-    sys.stderr.write('done.\n')
     ser.close()
 
     # get rid of first/last values
     results.pop(0)
     results.pop()
     capacitance = sum(results)/len(results)
-
-    sys.stderr.write('Raw capacitance: %.2e, ' % capacitance)
 
     # Math thanks to Dawn Lepard <dawn@lepard.ca>:
     # Ctotal = 1/(n*(1/C)), solving for n gives us n = C/Ctotal
@@ -182,20 +176,15 @@ def get_fullness_via_capacitance(name):
 
     if immersed <= 0:
         # very little capacitance -- bottom of probe isn't even wet
-        sys.stderr.write('empty!\n')
         return 0
     elif capacitance > (1/(2*(1/capvalue))):
         # Capacitance is greater than we'd see with 2 caps in series
-        sys.stderr.write('full!\n')
         return 100
     elif rawwaterlevel > 33 and rawwaterlevel < 77:
-        sys.stderr.write('%f capacitors immersed (raw)\n' % rawimmersed)
         return rawwaterlevel
     elif rawwaterlevel < 10:
-        sys.stderr.write('0 capacitors immersed (%i < 10)\n' % rawwaterlevel)
         return 0
     else:
-        sys.stderr.write('%i capacitors immersed (floor)\n' % immersed)
         return waterlevel
 
 def update_twitter(twittername, twitteroauth, fullness):
@@ -209,7 +198,6 @@ def update_twitter(twittername, twitteroauth, fullness):
 
     if curfullstr:
         curfull = int(curfullstr)
-        sys.stderr.write('Curfull: %i  Fullness: %i\n' % (curfull, fullness))
         if fullness != curfull:
             if fullness == 100:
                 sendtweet = True
@@ -225,7 +213,7 @@ def update_twitter(twittername, twitteroauth, fullness):
         access_token = oauth.OAuthToken.from_string(twitteroauth)
         api = oauthtwitter.OAuthApi(CONSUMER_KEY, CONSUMER_SECRET, access_token)
         api.GetUserInfo()
-        status = api.PostUpdate(outgoing + ' ' + ''.join(random.sample('MOIST',5)))
+        status = api.PostUpdate(outgoing + ' ' + ''.join(random.sample('MILDEW',5)))
         if status:
             sys.stderr.write('Twitter: TX %s, RX %s\n' % (outgoing, status.text))
             return True
@@ -258,10 +246,13 @@ def main():
         if type(fullness) is not type(None):
             print '%s.value %i' % (myname, fullness)
             if 'updatetwitter' in __dehumidifiers__[myname].keys():
-                if (__dehumidifiers__[myname]['updatetwitter'] and
-                        myname+'-oauth' in os.environ.keys()):
+                if __dehumidifiers__[myname]['updatetwitter']:
+                    oauth = "oauth_token_secret="
+                    oauth += os.environ[myname+'oasec']
+                    oauth += "&oauth_token="
+                    oauth += os.environ[myname+'oakey']
                     update_twitter(twittername=myname,
-                                   twitteroauth=os.environ[myname+'-oauth'],
+                                   twitteroauth=oauth,
                                    fullness=fullness)
             if fullness == 100 and 'hiveminder' in __dehumidifiers__[myname].keys() and not os.path.exists('/tmp/munin-dehumid-%s-hmsent' % myname):
                 # open a hiveminder task via e-mail

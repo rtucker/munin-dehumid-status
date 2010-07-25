@@ -42,5 +42,8 @@ print user.status.text
 
 print ""
 print "Please copy and paste the following into /etc/munin/plugin-conf.d/dehumid :"
-print "env." + user.screen_name + "-oauth " + access_token.to_string()
+print ""
+
+print "env." + user.screen_name + "oakey " + access_token.key
+print "env." + user.screen_name + "oasec " + access_token.secret
 
