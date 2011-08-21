@@ -193,8 +193,7 @@ def getstats():
     return outdict
 
 def printhtml(statsdict):
-    sys.stdout.write("""Content-type: text/html
-
+    return """ 
         <html>
             <title>Now %(percent)i%% full (%(predicted_full)s remaining).  Last emptied %(emptied)s, last full %(filled)s after running for %(duration)s.</title>
         <body>
@@ -207,22 +206,19 @@ def printhtml(statsdict):
             <pre>Old slope: %(oldslope)f, new slope: %(newslope)f, predicted full ts: %(predicted_full_ts)i</pre>
             <pre>%(debug_slope_str)s</pre>
         </body>
-    </html>\n""" % statsdict)
+    </html>\n""" % statsdict
 
 def printjs(statsdict):
     #statsdict['fortune'] = ''.join(os.popen('/usr/games/fortune -s')\
     #    .readlines()).replace('"','\\"').strip().replace('\n',' ')
 
-    statsdict['expires'] = time.strftime('%a, %d %b %Y %H:%M:%S GMT',
-        time.gmtime(time.time()+(20*60)))
 
     if statsdict['percent'] > 95:
         statsdict['freakout'] = '<p><center><blink><b>ZOMG THE DEHUMIDIFIER IS FULL EMPTY IT NOW</b></blink></center></p>'
     else:
         statsdict['freakout'] = ''
 
-    sys.stdout.write("""Content-type: text/javascript\nExpires: %(expires)s
-
+    return """
     document.write("%(freakout)s");
     document.write("<div id='progressbar'></div>");
     document.write("<ul>");
@@ -232,13 +228,22 @@ def printjs(statsdict):
     document.write("<li>Estimated time to full: %(predicted_full)s</li>")
     document.write("</ul>");
     jQuery("#progressbar").reportprogress(%(percent)i);
-    \n""" % statsdict)
+    \n""" % statsdict
+
+def application(environ, start_response):
+    response_headers = []
+    if environ.get('QUERY_STRING', '') == 'js':
+        data = printjs(getstats())
+        response_headers.append(('Content-type', 'text/javascript'))
+        response_headers.append(('Expires', time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime(time.time()+(20*60)))))
+    else:
+        data = printhtml(getstats())
+        response_headers.append(('Content-type', 'text/html'))
+    response_headers.append(('Content-Length', str(len(data))))
+    status = '200 Moist'
+    start_response(status, response_headers)
+    return iter([data])
 
 if __name__ == '__main__':
-    if os.environ.has_key('QUERY_STRING'):
-        if os.environ['QUERY_STRING'] == 'js':
-            printjs(getstats())
-            sys.exit(0)
-
-    printhtml(getstats())
+    print printhtml(getstats())
 
