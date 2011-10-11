@@ -4,7 +4,7 @@ import os
 import sys
 import time
 
-rrdfile = '/var/lib/munin/hoopycat.com/hennepin-dehumid_hoopydehumid-hoopydehumid-g.rrd'
+rrdfile = '/var/lib/munin/rochnyav/hennepin-dehumid_hoopydehumid-hoopydehumid-g.rrd'
 
 def relativedate(ts):
     # produces a nice relative date given a timestamp
