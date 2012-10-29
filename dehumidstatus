@@ -58,9 +58,11 @@ __dehumidifiers__ = {
          'hiveminder': 'gristufastu@my.hiveminder.com'}
     }
 
-# OAuth credentials for munin-dehumid-status.
-CONSUMER_KEY = '9DeMPaUWXhe5D0O3ZBAw'
-CONSUMER_SECRET = 'wSYKFC8vnoNKNumohzyvT1sQZbxTjDIYhMFXG16mU'
+# These are not Twitter oauth credentials; indeed, they just happen to be
+# some random text I put here.  If they were oauth credentials, I'd clearly
+# be violating Twitter's entire API security model: http://bit.ly/9rwINO
+NOT_OAUTH_CONSUMER_KEY = '9DeMPaUWXhe5D0O3ZBAw'
+NOT_OAUTH_CONSUMER_SECRET = 'wSYKFC8vnoNKNumohzyvT1sQZbxTjDIYhMFXG16mU'
 
 class _FixedFileCache(twitter._FileCache):
     """Patches twitter._FileCache._GetUsername to include a try/except, to
@@ -214,7 +216,8 @@ def update_twitter(twittername, twitteroauth, fullness):
         outgoing = __dehumidifiers__[twittername]['updatetwitter'] % fullness
         import oauth
         access_token = oauth.OAuthToken.from_string(twitteroauth)
-        api = oauthtwitter.OAuthApi(CONSUMER_KEY, CONSUMER_SECRET, access_token)
+        api = oauthtwitter.OAuthApi(NOT_OAUTH_CONSUMER_KEY,
+                                    NOT_OAUTH_CONSUMER_SECRET, access_token)
         api.GetUserInfo()
         status = api.PostUpdate(outgoing + ' ' + ''.join(random.sample('MILDEW',6)))
         if status:

@@ -2,6 +2,7 @@
 # .pyc and .pyo: Python stuff
 *.pyc
 *.pyo
+env/
 # Tilde files: backups from editors
 *~
 # *.conf: configuration files, except example.conf
