@@ -35,6 +35,9 @@ try:
 except ImportError:
     __twitterok__ = False
 
+# Dropping twitter support for the while
+__twitterok__ = False
+
 # Full and empty regexps for various dehumidifiers
 __dehumidifiers__ = {
     'mwwdehumid':
@@ -245,7 +248,7 @@ def main():
             fullness = get_fullness_via_capacitance(myname)
         if type(fullness) is not type(None):
             print '%s.value %i' % (myname, fullness)
-            if 'updatetwitter' in __dehumidifiers__[myname].keys():
+            if 'updatetwitter' in __dehumidifiers__[myname].keys() and __twitterok__:
                 if __dehumidifiers__[myname]['updatetwitter']:
                     oauth = "oauth_token_secret="
                     oauth += os.environ[myname+'oasec']
